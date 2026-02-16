@@ -8,7 +8,6 @@ Workshop map manager for CS2 servers running [ModSharp](https://github.com/Kxnrl
 - Resolves BSP names automatically and saves them to `maplist.json`
 - Generates `gamemodes_server.txt` and sets the `workshop` mapgroup
 - Optionally switches to a default or random map after everything is ready
-- Default map options after server start
 - Can reload the current map on a timer when the server is empty (fixes CS2 movement desync on long-running servers)
 
 ## Setup
