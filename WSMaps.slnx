@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src\WSMapsModule.csproj" Type="C#" />
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <Platform Name="x64" />
+  </Configurations>
+</Solution>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <AssemblyName>WSMaps</AssemblyName>
+        <RootNamespace>YappersHQ.WSMaps</RootNamespace>
+        <Version>0.1.0</Version>
+        <Copyright>©2026 YappersHQ</Copyright>
+        <RepositoryUrl>https://github.com/SourceSharp/ModSharp-Module-Template</RepositoryUrl>
+        <OutputPath>$(MSBuildThisFileDirectory)..\.build\modules\$(AssemblyName)\</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <Target Name="CopyAssets" AfterTargets="Build">
+        <ItemGroup>
+            <AssetFiles Include="$(MSBuildThisFileDirectory)..\.assets\**\*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(AssetFiles)"
+              DestinationFiles="@(AssetFiles->'$(MSBuildThisFileDirectory)..\.build\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
+</Project>
