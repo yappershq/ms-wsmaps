@@ -28,6 +28,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
     private double _cycleTimeoutSeconds = 600.0;
     private double _switcherIntervalSeconds = 900.0;
     private bool _pendingMapgroup;
+    private bool _firstBoot = true;
     private Guid _switcherTimer;
 
     private string MaplistPath => Path.Combine(bridge.SharpPath, "configs", "wsmaps", "maplist.json");
@@ -194,7 +195,13 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
         if (_workshopMaps.Count == 0)
             return;
 
-        _cycler.OnMapLoaded(ResolveDefaultMap());
+        _cycler.OnMapLoaded();
+
+        if (_firstBoot)
+        {
+            _firstBoot = false;
+            ChangeToDefaultMap();
+        }
     }
 
 #endregion
@@ -299,32 +306,45 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
         }
     }
 
-    private string? ResolveDefaultMap()
+    private void ChangeToDefaultMap()
     {
-        if (!_randomMap && string.IsNullOrWhiteSpace(_defaultMap))
-            return null;
+        string? mapName;
 
         if (_randomMap)
         {
-            _randomMap = false;
-            _defaultMap = null;
-
             var resolved = _workshopMaps.FindAll(m => !string.IsNullOrEmpty(m.MapName));
 
             if (resolved.Count == 0)
             {
                 _logger.LogWarning("RandomMap enabled but no workshop maps have resolved names yet");
-                return null;
+                return;
             }
 
-            var pick = resolved[Random.Shared.Next(resolved.Count)];
-            _logger.LogInformation("Random default map selected: {MapName}", pick.MapName);
-            return pick.MapName;
+            mapName = resolved[Random.Shared.Next(resolved.Count)].MapName;
+            _logger.LogInformation("Random default map selected: {MapName}", mapName);
+        }
+        else if (!string.IsNullOrWhiteSpace(_defaultMap))
+        {
+            mapName = _defaultMap;
+        }
+        else
+        {
+            return;
         }
 
-        var setting = _defaultMap;
-        _defaultMap = null;
-        return setting;
+        var workshop = _workshopMaps.Find(m =>
+            string.Equals(m.MapName, mapName, StringComparison.OrdinalIgnoreCase));
+
+        if (workshop is not null)
+        {
+            _logger.LogInformation("Changing to default map {Map}", mapName);
+            bridge.ModSharp.ServerCommand($"host_workshop_map {workshop.WorkshopId}");
+        }
+        else
+        {
+            _logger.LogInformation("Changing to default map {Map}", mapName);
+            bridge.ModSharp.ServerCommand($"changelevel {mapName}");
+        }
     }
 
     private void ApplyWorkshopMapgroup(bool mapChangeFollowing)

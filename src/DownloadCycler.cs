@@ -42,7 +42,7 @@ internal sealed class DownloadCycler
         _autoDownload = autoDownload;
     }
 
-    public void StartMissingDownloads(string? defaultMap = null)
+    public void StartMissingDownloads()
     {
         foreach (var map in _maps)
         {
@@ -71,7 +71,7 @@ internal sealed class DownloadCycler
             return;
         }
 
-        _returnMap = defaultMap ?? _bridge.ModSharp.GetMapName();
+        _returnMap = _bridge.ModSharp.GetMapName();
         _logger.LogInformation("{Count} workshop maps need downloading", _downloadQueue.Count);
         IsCycling = true;
         CycleNext();
@@ -90,14 +90,14 @@ internal sealed class DownloadCycler
         CycleNext();
     }
 
-    public void OnMapLoaded(string? defaultMap = null)
+    public void OnMapLoaded()
     {
         if (_firstActivate)
         {
             _firstActivate = false;
 
             if (_autoDownload)
-                StartMissingDownloads(defaultMap);
+                StartMissingDownloads();
 
             return;
         }
