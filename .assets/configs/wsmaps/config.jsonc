@@ -1,0 +1,16 @@
+{
+  // Map to switch to after all workshop maps are downloaded
+  "DefaultMap": "ttt_golf",
+
+  // Pick a random workshop map instead of using DefaultMap
+  "RandomMap": true,
+
+  // Reload the current map when the server is empty to prevent desync
+  "EmptyMapSwitcher": true,
+
+  // How often (in seconds) to check for an empty server (default: 900 = 15 min)
+  "SwitcherIntervalSeconds": 900.0,
+
+  // Timeout (in seconds) before skipping a workshop map download (default: 600 = 10 min)
+  "CycleTimeoutSeconds": 600.0
+}

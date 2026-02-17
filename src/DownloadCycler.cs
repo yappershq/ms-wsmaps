@@ -65,10 +65,9 @@ internal sealed class DownloadCycler
         if (_downloadQueue.Count == 0)
         {
             _logger.LogInformation("All workshop maps are already installed");
-            var hasDefaultMap = !string.IsNullOrEmpty(defaultMap);
-            _onCycleComplete(hasDefaultMap);
+            _onCycleComplete(!string.IsNullOrEmpty(defaultMap));
 
-            if (hasDefaultMap)
+            if (!string.IsNullOrEmpty(defaultMap))
             {
                 _logger.LogInformation("Changing to default map {Map}", defaultMap);
                 ChangeToMap(defaultMap);
@@ -158,16 +157,16 @@ internal sealed class DownloadCycler
         _currentCycleMap = null;
         ConfigExporter.SaveMaplist(_maps, _maplistPath, _logger);
 
-        var hasReturnMap = !string.IsNullOrEmpty(_returnMap);
-        _onCycleComplete(hasReturnMap);
+        var returnMap = _returnMap;
+        _returnMap = null;
+        _onCycleComplete(!string.IsNullOrEmpty(returnMap));
 
         _logger.LogInformation("Workshop map download cycle complete");
 
-        if (hasReturnMap)
+        if (!string.IsNullOrEmpty(returnMap))
         {
-            _logger.LogInformation("Returning to map {Map}", _returnMap);
-            ChangeToMap(_returnMap);
-            _returnMap = null;
+            _logger.LogInformation("Returning to map {Map}", returnMap);
+            ChangeToMap(returnMap);
         }
     }
 

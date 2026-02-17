@@ -25,13 +25,12 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
     private bool _randomMap;
     private bool _emptyMapSwitcher;
     private double _cycleTimeoutSeconds = 600.0;
+    private double _switcherIntervalSeconds = 900.0;
     private bool _pendingMapgroup;
     private Guid _switcherTimer;
 
-    private const double SwitcherIntervalSeconds = 900.0;
-
     private string MaplistPath => Path.Combine(bridge.SharpPath, "configs", "wsmaps", "maplist.json");
-    private string ConfigPath  => Path.Combine(bridge.SharpPath, "configs", "wsmaps", "config.json");
+    private string ConfigPath  => Path.Combine(bridge.SharpPath, "configs", "wsmaps", "config.jsonc");
 
     public WSMapsModule(ISharedSystem sharedSystem,
         string                 dllPath,
@@ -101,8 +100,18 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
                     && switcherProp.ValueKind == JsonValueKind.True)
                 {
                     _emptyMapSwitcher = true;
+                }
+
+                if (root.TryGetProperty("_switcherIntervalSeconds", out var intervalProp)
+                    && intervalProp.ValueKind == JsonValueKind.Number)
+                {
+                    _switcherIntervalSeconds = intervalProp.GetDouble();
+                }
+
+                if (_emptyMapSwitcher)
+                {
                     _logger.LogInformation("Empty map switcher enabled (interval: {Seconds}s)",
-                        SwitcherIntervalSeconds);
+                        _switcherIntervalSeconds);
                 }
 
                 if (root.TryGetProperty("CycleTimeoutSeconds", out var timeoutProp)
@@ -114,7 +123,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Failed to parse config.json");
+                _logger.LogError(e, "Failed to parse config.jsonc");
             }
         }
 
@@ -264,7 +273,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
             }
 
             ScheduleEmptyMapSwitch();
-        }, SwitcherIntervalSeconds);
+        }, _switcherIntervalSeconds);
     }
 
     private void RestartSwitcherTimer()
