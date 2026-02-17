@@ -1,4 +1,8 @@
 {
+  // Automatically download missing workshop maps on server boot (default: false)
+  // When false, use the ms_wsmaps_download console command to trigger downloads
+  "AutoDownload": false,
+
   // Map to switch to after all workshop maps are downloaded
   "DefaultMap": "ttt_golf",
 

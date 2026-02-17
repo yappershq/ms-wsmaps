@@ -23,6 +23,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
     private DownloadCycler _cycler = null!;
     private string? _defaultMap;
     private bool _randomMap;
+    private bool _autoDownload;
     private bool _emptyMapSwitcher;
     private double _cycleTimeoutSeconds = 600.0;
     private double _switcherIntervalSeconds = 900.0;
@@ -89,6 +90,13 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
                     }
                 }
 
+                if (root.TryGetProperty("AutoDownload", out var autoDlProp)
+                    && autoDlProp.ValueKind == JsonValueKind.True)
+                {
+                    _autoDownload = true;
+                    _logger.LogInformation("Auto download on boot enabled");
+                }
+
                 if (root.TryGetProperty("RandomMap", out var randomProp)
                     && randomProp.ValueKind == JsonValueKind.True)
                 {
@@ -127,7 +135,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
             }
         }
 
-        _cycler = new DownloadCycler(bridge, _logger, _workshopMaps, MaplistPath, ApplyWorkshopMapgroup, _cycleTimeoutSeconds);
+        _cycler = new DownloadCycler(bridge, _logger, _workshopMaps, MaplistPath, ApplyWorkshopMapgroup, _cycleTimeoutSeconds, _autoDownload);
         return true;
     }
 

@@ -14,6 +14,7 @@ internal sealed class DownloadCycler
     private readonly string _maplistPath;
 
     private readonly double _cycleTimeoutSeconds;
+    private readonly bool _autoDownload;
 
     private readonly Queue<MapEntry> _downloadQueue = new();
     private MapEntry? _currentCycleMap;
@@ -29,7 +30,8 @@ internal sealed class DownloadCycler
         List<MapEntry> maps,
         string maplistPath,
         Action<bool> onCycleComplete,
-        double cycleTimeoutSeconds = 600.0)
+        double cycleTimeoutSeconds = 600.0,
+        bool autoDownload = false)
     {
         _bridge = bridge;
         _logger = logger;
@@ -37,6 +39,7 @@ internal sealed class DownloadCycler
         _maplistPath = maplistPath;
         _onCycleComplete = onCycleComplete;
         _cycleTimeoutSeconds = cycleTimeoutSeconds;
+        _autoDownload = autoDownload;
     }
 
     public void StartMissingDownloads(string? defaultMap = null)
@@ -65,13 +68,6 @@ internal sealed class DownloadCycler
         if (_downloadQueue.Count == 0)
         {
             _logger.LogInformation("All workshop maps are already installed");
-            _onCycleComplete(!string.IsNullOrEmpty(defaultMap));
-
-            if (!string.IsNullOrEmpty(defaultMap))
-            {
-                _logger.LogInformation("Changing to default map {Map}", defaultMap);
-                ChangeToMap(defaultMap);
-            }
             return;
         }
 
@@ -99,7 +95,10 @@ internal sealed class DownloadCycler
         if (_firstActivate)
         {
             _firstActivate = false;
-            StartMissingDownloads(defaultMap);
+
+            if (_autoDownload)
+                StartMissingDownloads(defaultMap);
+
             return;
         }
 
