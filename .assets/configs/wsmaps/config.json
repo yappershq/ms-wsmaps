@@ -1,5 +1,6 @@
 {
   "DefaultMap": "ttt_golf",
   "RandomMap": true,
-  "EmptyMapSwitcher": true
+  "EmptyMapSwitcher": true,
+  "CycleTimeoutSeconds": 600.0
 }

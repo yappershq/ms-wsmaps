@@ -24,6 +24,8 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
     private string? _defaultMap;
     private bool _randomMap;
     private bool _emptyMapSwitcher;
+    private double _cycleTimeoutSeconds = 600.0;
+    private bool _pendingMapgroup;
     private Guid _switcherTimer;
 
     private const double SwitcherIntervalSeconds = 900.0;
@@ -102,6 +104,13 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
                     _logger.LogInformation("Empty map switcher enabled (interval: {Seconds}s)",
                         SwitcherIntervalSeconds);
                 }
+
+                if (root.TryGetProperty("CycleTimeoutSeconds", out var timeoutProp)
+                    && timeoutProp.ValueKind == JsonValueKind.Number)
+                {
+                    _cycleTimeoutSeconds = timeoutProp.GetDouble();
+                    _logger.LogInformation("Cycle timeout configured: {Seconds}s", _cycleTimeoutSeconds);
+                }
             }
             catch (Exception e)
             {
@@ -109,7 +118,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
             }
         }
 
-        _cycler = new DownloadCycler(bridge, _logger, _workshopMaps, MaplistPath, ApplyWorkshopMapgroup);
+        _cycler = new DownloadCycler(bridge, _logger, _workshopMaps, MaplistPath, ApplyWorkshopMapgroup, _cycleTimeoutSeconds);
         return true;
     }
 
@@ -135,9 +144,6 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
             OnMaplistCommand,
             "Generate maplist.jsonc for MapManager with workshop maps",
             ConVarFlags.Release);
-
-        if (_emptyMapSwitcher)
-            ScheduleEmptyMapSwitch();
     }
 
     public void Shutdown()
@@ -158,6 +164,16 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
 
     void IGameListener.OnServerActivate()
     {
+        if (_emptyMapSwitcher)
+            RestartSwitcherTimer();
+
+        if (_pendingMapgroup)
+        {
+            _pendingMapgroup = false;
+            bridge.ModSharp.ServerCommand("mapgroup workshop");
+            _logger.LogInformation("Set mapgroup to workshop");
+        }
+
         if (_workshopMaps.Count == 0)
             return;
 
@@ -237,11 +253,11 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
                     {
                         _logger.LogInformation("Empty server, reloading map {Map} to prevent desync", currentMap);
 
-                        var isWorkshop = _workshopMaps.Exists(m =>
+                        var workshop = _workshopMaps.Find(m =>
                             string.Equals(m.MapName, currentMap, StringComparison.OrdinalIgnoreCase));
 
-                        bridge.ModSharp.ServerCommand(isWorkshop
-                            ? $"ds_workshop_changelevel {currentMap}"
+                        bridge.ModSharp.ServerCommand(workshop is not null
+                            ? $"host_workshop_map {workshop.WorkshopId}"
                             : $"changelevel {currentMap}");
                     }
                 }
@@ -249,6 +265,12 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
 
             ScheduleEmptyMapSwitch();
         }, SwitcherIntervalSeconds);
+    }
+
+    private void RestartSwitcherTimer()
+    {
+        CancelSwitcherTimer();
+        ScheduleEmptyMapSwitch();
     }
 
     private void CancelSwitcherTimer()
@@ -288,11 +310,19 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
         return setting;
     }
 
-    private void ApplyWorkshopMapgroup()
+    private void ApplyWorkshopMapgroup(bool mapChangeFollowing)
     {
         var path = Path.Combine(bridge.RootPath, "csgo", "gamemodes_server.txt");
         ConfigExporter.GenerateGamemodes(_workshopMaps, path, _logger);
-        bridge.ModSharp.ServerCommand("mapgroup workshop");
-        _logger.LogInformation("Set mapgroup to workshop");
+
+        if (mapChangeFollowing)
+        {
+            _pendingMapgroup = true;
+        }
+        else
+        {
+            bridge.ModSharp.ServerCommand("mapgroup workshop");
+            _logger.LogInformation("Set mapgroup to workshop");
+        }
     }
 }

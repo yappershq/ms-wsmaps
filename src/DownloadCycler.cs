@@ -10,16 +10,16 @@ internal sealed class DownloadCycler
     private readonly InterfaceBridge _bridge;
     private readonly ILogger _logger;
     private readonly List<MapEntry> _maps;
-    private readonly Action _onCycleComplete;
+    private readonly Action<bool> _onCycleComplete;
     private readonly string _maplistPath;
+
+    private readonly double _cycleTimeoutSeconds;
 
     private readonly Queue<MapEntry> _downloadQueue = new();
     private MapEntry? _currentCycleMap;
     private string? _returnMap;
     private Guid _timeoutTimer;
     private bool _firstActivate = true;
-
-    private const double CycleTimeoutSeconds = 600.0;
 
     public bool IsCycling { get; private set; }
 
@@ -28,13 +28,15 @@ internal sealed class DownloadCycler
         ILogger logger,
         List<MapEntry> maps,
         string maplistPath,
-        Action onCycleComplete)
+        Action<bool> onCycleComplete,
+        double cycleTimeoutSeconds = 600.0)
     {
         _bridge = bridge;
         _logger = logger;
         _maps = maps;
         _maplistPath = maplistPath;
         _onCycleComplete = onCycleComplete;
+        _cycleTimeoutSeconds = cycleTimeoutSeconds;
     }
 
     public void StartMissingDownloads(string? defaultMap = null)
@@ -63,9 +65,10 @@ internal sealed class DownloadCycler
         if (_downloadQueue.Count == 0)
         {
             _logger.LogInformation("All workshop maps are already installed");
-            _onCycleComplete();
+            var hasDefaultMap = !string.IsNullOrEmpty(defaultMap);
+            _onCycleComplete(hasDefaultMap);
 
-            if (!string.IsNullOrEmpty(defaultMap))
+            if (hasDefaultMap)
             {
                 _logger.LogInformation("Changing to default map {Map}", defaultMap);
                 ChangeToMap(defaultMap);
@@ -154,11 +157,13 @@ internal sealed class DownloadCycler
         IsCycling = false;
         _currentCycleMap = null;
         ConfigExporter.SaveMaplist(_maps, _maplistPath, _logger);
-        _onCycleComplete();
+
+        var hasReturnMap = !string.IsNullOrEmpty(_returnMap);
+        _onCycleComplete(hasReturnMap);
 
         _logger.LogInformation("Workshop map download cycle complete");
 
-        if (!string.IsNullOrEmpty(_returnMap))
+        if (hasReturnMap)
         {
             _logger.LogInformation("Returning to map {Map}", _returnMap);
             ChangeToMap(_returnMap);
@@ -172,7 +177,7 @@ internal sealed class DownloadCycler
             string.Equals(m.MapName, mapName, StringComparison.OrdinalIgnoreCase));
 
         if (workshop is not null)
-            _bridge.ModSharp.ServerCommand($"ds_workshop_changelevel {mapName}");
+            _bridge.ModSharp.ServerCommand($"host_workshop_map {workshop.WorkshopId}");
         else
             _bridge.ModSharp.ServerCommand($"changelevel {mapName}");
     }
@@ -187,10 +192,10 @@ internal sealed class DownloadCycler
                 return;
 
             _logger.LogWarning("Workshop map {Id} timed out after {Seconds}s, skipping",
-                workshopId, CycleTimeoutSeconds);
+                workshopId, _cycleTimeoutSeconds);
             _currentCycleMap = null;
             CycleNext();
-        }, CycleTimeoutSeconds);
+        }, _cycleTimeoutSeconds);
     }
 
     private void CancelTimeout()
