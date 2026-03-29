@@ -4,9 +4,9 @@
   "AutoDownload": false,
 
   // Map to switch to after all workshop maps are downloaded
-  "DefaultMap": "ttt_golf",
+  "DefaultMap": "de_dust2",
 
-  // Pick a random workshop map instead of using DefaultMap
+  // Pick a random map (including stock maps) instead of using DefaultMap
   "RandomMap": true,
 
   // Reload the current map when the server is empty to prevent desync

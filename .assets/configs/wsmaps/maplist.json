@@ -4,11 +4,10 @@
   { "MapName": "de_inferno" },
   { "MapName": "de_nuke" },
   { "MapName": "de_overpass" },
-  { "MapName": "de_vertigo" },
   { "MapName": "de_ancient" },
   { "MapName": "de_anubis" },
+  { "MapName": "de_vertigo" },
+  { "MapName": "de_train" },
   { "MapName": "cs_office" },
-  { "MapName": "cs_italy" },
-  { "WorkshopId": 3431383387 },
-  { "WorkshopId": 3201173924 }
+  { "MapName": "cs_italy" }
 ]
