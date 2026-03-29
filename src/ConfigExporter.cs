@@ -81,16 +81,13 @@ internal static class ConfigExporter
 
         if (resolved.Count == 0)
         {
-            logger.LogWarning("No workshop maps with resolved names. Run ms_wsmaps_download first");
+            logger.LogWarning("No maps with resolved names. Run ms_wsmaps_download first");
             return;
         }
 
-        var entries = resolved.ConvertAll(m => new
-        {
-            m.MapName,
-            m.WorkshopId,
-            IsWorkshopMap = true
-        });
+        var entries = resolved.ConvertAll(m => m.IsStockMap
+            ? (object)new { m.MapName, IsWorkshopMap = false }
+            : new { m.MapName, m.WorkshopId, IsWorkshopMap = true });
 
         try
         {

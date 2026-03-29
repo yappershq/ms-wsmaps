@@ -19,6 +19,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
     private readonly ILogger<WSMapsModule> _logger;
     private readonly InterfaceBridge bridge;
 
+    private List<MapEntry> _allMaps = [];
     private List<MapEntry> _workshopMaps = [];
     private DownloadCycler _cycler = null!;
     private string? _defaultMap;
@@ -64,8 +65,11 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
                 }
                 else
                 {
-                    _workshopMaps = allMaps.FindAll(m => m.WorkshopId > 0);
-                    _logger.LogInformation("Loaded {Count} workshop maps from maplist.json", _workshopMaps.Count);
+                    _allMaps = allMaps;
+                    _workshopMaps = allMaps.FindAll(m => !m.IsStockMap);
+                    var stockCount = allMaps.Count - _workshopMaps.Count;
+                    _logger.LogInformation("Loaded {Total} maps from maplist.json ({Workshop} workshop, {Stock} stock)",
+                        allMaps.Count, _workshopMaps.Count, stockCount);
                 }
             }
             catch (Exception e)
@@ -136,7 +140,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
             }
         }
 
-        _cycler = new DownloadCycler(bridge, _logger, _workshopMaps, MaplistPath, ApplyWorkshopMapgroup, _cycleTimeoutSeconds, _autoDownload);
+        _cycler = new DownloadCycler(bridge, _logger, _allMaps, MaplistPath, ApplyWorkshopMapgroup, _cycleTimeoutSeconds, _autoDownload);
         return true;
     }
 
@@ -192,7 +196,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
             _logger.LogInformation("Set mapgroup to workshop");
         }
 
-        if (_workshopMaps.Count == 0)
+        if (_allMaps.Count == 0)
             return;
 
         _cycler.OnMapLoaded();
@@ -248,14 +252,14 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
     private ECommandAction OnGamemodesCommand(StringCommand command)
     {
         var path = Path.Combine(bridge.RootPath, "csgo", "gamemodes_server.txt");
-        ConfigExporter.GenerateGamemodes(_workshopMaps, path, _logger);
+        ConfigExporter.GenerateGamemodes(_allMaps, path, _logger);
         return ECommandAction.Stopped;
     }
 
     private ECommandAction OnMaplistCommand(StringCommand command)
     {
         var path = Path.Combine(bridge.SharpPath, "configs", "mapmanager", "maplist.jsonc");
-        ConfigExporter.GenerateMapManagerList(_workshopMaps, path, _logger);
+        ConfigExporter.GenerateMapManagerList(_allMaps, path, _logger);
         return ECommandAction.Stopped;
     }
 
@@ -277,11 +281,11 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
                     {
                         _logger.LogInformation("Empty server, reloading map {Map} to prevent desync", currentMap);
 
-                        var workshop = _workshopMaps.Find(m =>
+                        var entry = _allMaps.Find(m =>
                             string.Equals(m.MapName, currentMap, StringComparison.OrdinalIgnoreCase));
 
-                        bridge.ModSharp.ServerCommand(workshop is not null
-                            ? $"host_workshop_map {workshop.WorkshopId}"
+                        bridge.ModSharp.ServerCommand(entry is not null && !entry.IsStockMap
+                            ? $"host_workshop_map {entry.WorkshopId}"
                             : $"changelevel {currentMap}");
                     }
                 }
@@ -312,11 +316,11 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
 
         if (_randomMap)
         {
-            var resolved = _workshopMaps.FindAll(m => !string.IsNullOrEmpty(m.MapName));
+            var resolved = _allMaps.FindAll(m => !string.IsNullOrEmpty(m.MapName));
 
             if (resolved.Count == 0)
             {
-                _logger.LogWarning("RandomMap enabled but no workshop maps have resolved names yet");
+                _logger.LogWarning("RandomMap enabled but no maps have resolved names yet");
                 return;
             }
 
@@ -332,13 +336,13 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
             return;
         }
 
-        var workshop = _workshopMaps.Find(m =>
+        var entry = _allMaps.Find(m =>
             string.Equals(m.MapName, mapName, StringComparison.OrdinalIgnoreCase));
 
-        if (workshop is not null)
+        if (entry is not null && !entry.IsStockMap)
         {
-            _logger.LogInformation("Changing to default map {Map}", mapName);
-            bridge.ModSharp.ServerCommand($"host_workshop_map {workshop.WorkshopId}");
+            _logger.LogInformation("Changing to default workshop map {Map}", mapName);
+            bridge.ModSharp.ServerCommand($"host_workshop_map {entry.WorkshopId}");
         }
         else
         {
@@ -350,7 +354,7 @@ public sealed class WSMapsModule : IModSharpModule, ISteamListener, IGameListene
     private void ApplyWorkshopMapgroup(bool mapChangeFollowing)
     {
         var path = Path.Combine(bridge.RootPath, "csgo", "gamemodes_server.txt");
-        ConfigExporter.GenerateGamemodes(_workshopMaps, path, _logger);
+        ConfigExporter.GenerateGamemodes(_allMaps, path, _logger);
 
         if (mapChangeFollowing)
         {

@@ -46,6 +46,9 @@ internal sealed class DownloadCycler
     {
         foreach (var map in _maps)
         {
+            if (map.IsStockMap)
+                continue;
+
             var state = _bridge.SteamApi.GetItemState(map.WorkshopId);
             var installed = (state & WorkshopItemState.ItemStateInstalled) != 0;
 
@@ -84,7 +87,10 @@ internal sealed class DownloadCycler
         _currentCycleMap = null;
 
         foreach (var map in _maps)
-            _downloadQueue.Enqueue(map);
+        {
+            if (!map.IsStockMap)
+                _downloadQueue.Enqueue(map);
+        }
 
         IsCycling = true;
         CycleNext();
@@ -171,11 +177,11 @@ internal sealed class DownloadCycler
 
     private void ChangeToMap(string mapName)
     {
-        var workshop = _maps.Find(m =>
+        var entry = _maps.Find(m =>
             string.Equals(m.MapName, mapName, StringComparison.OrdinalIgnoreCase));
 
-        if (workshop is not null)
-            _bridge.ModSharp.ServerCommand($"host_workshop_map {workshop.WorkshopId}");
+        if (entry is not null && !entry.IsStockMap)
+            _bridge.ModSharp.ServerCommand($"host_workshop_map {entry.WorkshopId}");
         else
             _bridge.ModSharp.ServerCommand($"changelevel {mapName}");
     }
